@@ -547,7 +547,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, [setToolPresetState]);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
   }, []);
 
   const scrollUserMsgToTop = useCallback(() => {
@@ -595,6 +597,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     onBranchDataChange(data?.tree ?? [], activeLeafId, handleLeafChange);
   }, [data?.tree, activeLeafId, handleLeafChange, onBranchDataChange]);
 
+  // Scroll to bottom on mount / new messages (when not streaming)
   useEffect(() => {
     if (messages.length > 0) {
       if (pendingScrollToUserRef.current) {

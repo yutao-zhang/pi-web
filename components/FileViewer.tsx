@@ -22,7 +22,7 @@ interface FileData {
 
 const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "avif"]);
 const AUDIO_EXTS = new Set(["mp3", "wav", "ogg", "oga", "opus", "m4a", "aac", "flac", "weba", "webm"]);
-const DOCUMENT_PREVIEW_EXTS = new Set(["pdf", "docx"]);
+const DOCUMENT_PREVIEW_EXTS = new Set(["pdf", "docx", "xlsx"]);
 const DOCX_PREVIEW_MAX_BYTES = 10 * 1024 * 1024;
 
 function isImagePath(filePath: string): boolean {
@@ -586,7 +586,7 @@ function DocumentViewer({ filePath, cwd }: { filePath: string; cwd?: string }) {
         if (typeof d.size === "number") {
           setSize(d.size);
           if (!isPdf && d.size > DOCX_PREVIEW_MAX_BYTES) {
-            setError("DOCX too large for preview (>10MB)");
+            setError(ext === "xlsx" ? "File too large for preview (>10MB)" : "DOCX too large for preview (>10MB)");
           }
         }
       })
@@ -602,7 +602,7 @@ function DocumentViewer({ filePath, cwd }: { filePath: string; cwd?: string }) {
         if (typeof d.size === "number") {
           setSize(d.size);
           if (!isPdf && d.size > DOCX_PREVIEW_MAX_BYTES) {
-            setError("DOCX too large for preview (>10MB)");
+            setError(ext === "xlsx" ? "File too large for preview (>10MB)" : "DOCX too large for preview (>10MB)");
             return;
           }
         }
@@ -637,7 +637,7 @@ function DocumentViewer({ filePath, cwd }: { filePath: string; cwd?: string }) {
         <span style={{ fontFamily: "var(--font-mono)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={filePath}>
           {getRelativeFilePath(filePath, cwd)}
         </span>
-        <span style={{ marginLeft: "auto" }}>{ext === "docx" ? "docx preview" : "pdf"}</span>
+        <span style={{ marginLeft: "auto" }}>{ext === "docx" ? "docx preview" : ext === "xlsx" ? "xlsx preview" : "pdf"}</span>
         {size != null && <span>{formatSize(size)}</span>}
         <DownloadLink filePath={filePath} />
         <span

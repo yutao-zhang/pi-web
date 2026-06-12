@@ -157,6 +157,16 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   const visibleMessages = messages.filter((m) => m.role === "user" || m.role === "assistant");
   const messageRefs = useMessageRefs(visibleMessages.length);
 
+  // During streaming: scroll to bottom only if user is currently at the bottom
+  useEffect(() => {
+    if (!streamState.isStreaming || !scrollContainerRef.current) return;
+    const container = scrollContainerRef.current;
+    const distFromBottom = container.scrollHeight - container.clientHeight - container.scrollTop;
+    if (distFromBottom < 100) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [streamState.isStreaming, streamState.streamingMessage]);
+
   const isEmptyNew = isNew && messages.length === 0 && !streamState.isStreaming && !agentRunning;
 
   const availableThinkingLevels = displayModelValue
@@ -359,10 +369,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
               <div className="py-2 text-[13px] text-text-muted">
                 <span className="animate-[pulse_1.5s_infinite]">{phaseLabel(agentPhase)}</span>
               </div>
-            )}
-
-            {agentRunning && (
-              <div style={{ height: scrollContainerRef.current ? scrollContainerRef.current.clientHeight : "80vh" }} />
             )}
 
             <div ref={messagesEndRef} />

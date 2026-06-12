@@ -196,9 +196,10 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
   const minimapHeightPx = containerRef.current?.clientHeight ?? 600;
 
   const tooltipPositions = useMemo(() => {
-    if (!minimapHovered || nodes.length === 0) return [];
+    const userNodes = nodes.filter((n) => n.msg.role === "user");
+    if (!minimapHovered || userNodes.length === 0) return [];
     // Initial positions: centered on the dot
-    const positions = nodes.map((node) =>
+    const positions = userNodes.map((node) =>
       Math.round(node.topRatio * minimapHeightPx - TOOLTIP_HEIGHT / 2)
     );
     // Iterative push-apart to resolve overlaps (top-to-bottom pass, then bottom-to-top)
@@ -224,10 +225,11 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
   const viewportBoxTop = scrollRatio * (1 - viewportRatio) * 100;
   const viewportBoxHeight = viewportRatio * 100;
 
-  // Find the node closest to the current mouse position
-  const nearestIndex = mouseYRatio !== null && nodes.length > 0
-    ? nodes.reduce((best, node) => {
-        return Math.abs(node.topRatio - mouseYRatio) < Math.abs(nodes[best].topRatio - mouseYRatio) ? node.index : best;
+  // Find the user node closest to the current mouse position
+  const userNodes = nodes.filter((n) => n.msg.role === "user");
+  const nearestIndex = mouseYRatio !== null && userNodes.length > 0
+    ? userNodes.reduce((best, node) => {
+        return Math.abs(node.topRatio - mouseYRatio) < Math.abs(userNodes[best].topRatio - mouseYRatio) ? node.index : best;
       }, 0)
     : null;
 
@@ -268,11 +270,10 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
         }}
       />
 
-      {/* Message nodes */}
-      {nodes.map((node) => {
+      {/* Message nodes — only show user messages */}
+      {nodes.filter((n) => n.msg.role === "user").map((node) => {
         const color = getNodeColor(node.msg);
-        const isNearest = minimapHovered && nearestIndex === node.index;
-        const isUser = node.msg.role === "user";
+        const isNearest = minimapHovered && nearestIndex === node.index && node.msg.role === "user";
         const dotTop = node.topRatio * 100;
 
         return (
@@ -293,12 +294,12 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
               zIndex: 2,
             }}
           >
-            {/* Dot */}
+            {/* Square */}
             <div
               style={{
-                width: isUser ? 8 : 6,
-                height: isUser ? 8 : 6,
-                borderRadius: isUser ? 2 : "50%",
+                width: 8,
+                height: 8,
+                borderRadius: 2,
                 background: color.bg,
                 border: `1.5px solid ${color.border}`,
                 flexShrink: 0,
@@ -326,8 +327,8 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
         }}
       />
 
-      {/* Tooltips for all nodes, collision-free positions */}
-      {minimapHovered && nodes.map((node, i) => {
+      {/* Tooltips for user messages only */}
+      {minimapHovered && nodes.filter((n) => n.msg.role === "user").map((node, i) => {
         const preview = getMessagePreview(node.msg);
         const color = getNodeColor(node.msg);
         const isNearest = nearestIndex === node.index;

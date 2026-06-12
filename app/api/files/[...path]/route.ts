@@ -268,10 +268,11 @@ function streamFile(filePath: string, stat: fs.Stats, contentType: string, range
   });
 }
 
-function documentPreviewKind(filePath: string): "pdf" | "docx" | null {
+function documentPreviewKind(filePath: string): "pdf" | "docx" | "xlsx" | null {
   const ext = getExt(filePath);
   if (ext === "pdf") return "pdf";
   if (ext === "docx") return "docx";
+  if (ext === "xlsx") return "xlsx";
   return null;
 }
 
@@ -331,6 +332,33 @@ ${bodyHtml}
 </main>
 </body>
 </html>`;
+}
+
+function xlsxToHtml(wb: import("xlsx").WorkBook, XLSX: typeof import("xlsx"), fileName: string): string {
+  const sheetNames = wb.SheetNames;
+  let tables = "";
+  for (const name of sheetNames) {
+    const ws = wb.Sheets[name];
+    const ref = ws["!ref"];
+    if (!ref) continue;
+    const range = XLSX.utils.decode_range(ref);
+    let html = `<h3>${escapeHtml(name)}</h3>\n<div style="overflow-x: auto; max-width: 100%;">\n<table>\n`;
+    for (let r = range.s.r; r <= range.e.r; r++) {
+      html += "<tr>";
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        const cell = ws[addr];
+        const val = cell ? cell.v : "";
+        const tag = r === range.s.r ? "th" : "td";
+        html += `<${tag}>${escapeHtml(String(val ?? ""))}</${tag}>`;
+      }
+      html += "</tr>\n";
+    }
+    html += "</table>\n</div>\n";
+    tables += html;
+  }
+
+  return wrapDocxPreviewHtml(tables, fileName);
 }
 
 export async function GET(
@@ -400,7 +428,26 @@ export async function GET(
       if (!stat.isFile()) {
         return NextResponse.json({ error: "Not a file" }, { status: 400 });
       }
-      if (getExt(filePath) !== "docx") {
+
+      const ext = getExt(filePath);
+
+      if (ext === "xlsx") {
+        const XLSX = await import("xlsx");
+        const buf = fs.readFileSync(filePath);
+        const wb = XLSX.read(buf, { type: "buffer" });
+        const html = xlsxToHtml(wb, XLSX, path.basename(filePath));
+        return new Response(html, {
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "no-cache",
+            "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'",
+            "Referrer-Policy": "no-referrer",
+            "X-Content-Type-Options": "nosniff",
+          },
+        });
+      }
+
+      if (ext !== "docx") {
         return NextResponse.json({ error: "Preview not available for this file type" }, { status: 400 });
       }
       if (stat.size > DOCX_PREVIEW_MAX_BYTES) {
